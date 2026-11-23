@@ -1,6 +1,6 @@
 import { ao5, formatTime } from './timer.js';
 import { generateScramble } from './scramble.js?v=20261123-1';
-import { InspectionTimer } from './inspection.js?v=20261123-1';
+import { InspectionTimer } from './inspection.js?v=20261123-2';
 const $ = id => document.getElementById(id);
 const key = 'cube-timer.records.v1';
 let records = [], running = false, started = 0, frame, phaseFrame, storageOK = true;
@@ -127,8 +127,8 @@ function phaseTick() {
   const event = machine.tick(now);
   if (event === 'inspection-start') {
     $('status').innerHTML = '<i></i> INSPECTION';
-    $('hint').textContent = '指を離すとスタート（別の指でタップするとキャンセル）';
-    $('announcement').textContent = 'インスペクション開始。15秒以内に指を離すと計測が始まります。';
+    $('hint').textContent = 'タップでスタート（15秒経つと自動スタート）';
+    $('announcement').textContent = 'インスペクション開始。タップで計測が始まり、15秒経過すると自動で始まります。';
     setPhaseUI();
   }
   if (machine.state === 'inspection') {
@@ -154,7 +154,9 @@ function pressStart() {
     if (performance.now() - machine.startedAt < 300) return;
     stopSolve(); return;
   }
-  if (machine.press(performance.now()) === 'holding') {
+  const event = machine.press(performance.now());
+  if (event === 'solve-start') { beginSolve(); return; }
+  if (event === 'holding') {
     $('status').innerHTML = '<i></i> KEEP HOLDING';
     $('hint').textContent = 'そのまま長押し…';
     setPhaseUI(); ensurePhaseLoop();
@@ -186,8 +188,8 @@ function stopSolve() {
 $('timer').addEventListener('pointerdown', event => {
   if (event.pointerType === 'mouse' && event.button !== 0) return;
   if (!event.isPrimary) {
-    // 押し続けている間に別の指で触れたらキャンセル
-    if (machine.state === 'holding' || machine.state === 'inspection') { event.preventDefault(); cancelInspection(); }
+    // インスペクション中の別の指のタップも「再度タップ」として開始する
+    if (machine.state === 'inspection') { event.preventDefault(); pressStart(); }
     return;
   }
   event.preventDefault();
