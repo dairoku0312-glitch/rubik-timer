@@ -1,14 +1,18 @@
 import { ao5, formatTime } from './timer.js';
 import { generateScramble } from './scramble.js?v=20261123-1';
 import { InspectionTimer } from './inspection.js?v=20261123-2';
+import { keyForMode, loadRecords, saveRecords, loadMode, saveMode } from './recordStore.js?v=20261123-3';
 const $ = id => document.getElementById(id);
-const key = 'cube-timer.records.v1';
-let records = [], running = false, started = 0, frame, phaseFrame, storageOK = true;
+// 通常ソルブは従来キー（移行なし）、クロス練習は別キーで完全分離
+let mode = loadMode(localStorage);
+const store = {
+  solve: loadRecords(localStorage, keyForMode('solve')),
+  cross: loadRecords(localStorage, keyForMode('cross')),
+};
+let records = store[mode];
+let running = false, started = 0, frame, phaseFrame, storageOK = true;
 const machine = new InspectionTimer();
-try {
-  const stored = JSON.parse(localStorage.getItem(key) || '[]');
-  if (Array.isArray(stored)) records = stored.filter(r => r && typeof r.id === 'string' && Number.isFinite(r.ms) && r.ms >= 0 && Number.isFinite(r.date));
-} catch { storageOK = false; }
+try { localStorage.getItem(keyForMode('solve')); } catch { storageOK = false; }
 
 // --- Calendar state ---
 // Dates are handled as local 'YYYY-MM-DD' keys so a solve is filed under the
@@ -24,10 +28,28 @@ const recordDays = () => new Set(records.map(r => dateKey(new Date(r.date))));
 const dayRecords = () => records.filter(r => dateKey(new Date(r.date)) === selected);
 
 function save() {
-  try { localStorage.setItem(key, JSON.stringify(records)); storageOK = true; }
-  catch { storageOK = false; }
+  storageOK = saveRecords(localStorage, keyForMode(mode), records);
   render();
 }
+
+// --- 練習モード切り替え（計測中・インスペクション中は切り替え不可） ---
+function applyMode() {
+  $('mode-solve').classList.toggle('active', mode === 'solve');
+  $('mode-cross').classList.toggle('active', mode === 'cross');
+  $('mode-solve').setAttribute('aria-pressed', String(mode === 'solve'));
+  $('mode-cross').setAttribute('aria-pressed', String(mode === 'cross'));
+}
+function setMode(next) {
+  if (next === mode || machine.state !== 'idle') return;
+  mode = next;
+  records = store[mode];
+  saveMode(localStorage, mode);
+  applyMode();
+  render();
+  $('announcement').textContent = next === 'cross' ? 'クロス練習モードに切り替えました。' : '通常ソルブモードに切り替えました。';
+}
+$('mode-solve').addEventListener('click', () => setMode('solve'));
+$('mode-cross').addEventListener('click', () => setMode('cross'));
 function display(ms) {
   const [whole, decimal] = formatTime(ms).split('.');
   $('time').replaceChildren(document.createTextNode(whole), Object.assign(document.createElement('span'), {textContent: `.${decimal}`}));
@@ -116,6 +138,9 @@ function setPhaseUI() {
   document.body.classList.toggle('running', s === 'running');
   $('cancel-inspection').hidden = s !== 'inspection';
   $('timer').setAttribute('aria-label', s === 'running' ? 'タップして計測停止' : '長押しで計測準備');
+  const modeLocked = s !== 'idle';
+  $('mode-solve').disabled = modeLocked;
+  $('mode-cross').disabled = modeLocked;
 }
 function resetIdleUI(status, hint) {
   running = false; setPhaseUI();
@@ -221,4 +246,5 @@ $('cal-prev').addEventListener('click', () => { viewMonth--; if (viewMonth < 0) 
 $('cal-next').addEventListener('click', () => { viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; } render(); });
 newScramble();
 applyScramble();
+applyMode();
 render();
