@@ -5,19 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#101916">
   <title>CUBE / ルービックキューブタイマー</title>
-  <link rel="stylesheet" href="style.css">
-  <script type="module" src="app.js"></script>
+  <link rel="stylesheet" href="style.css?v=20261123-1">
+  <script type="module" src="app.js?v=20261123-1"></script>
 </head>
 <body>
   <main>
     <header><a class="brand" href="./" aria-label="CUBE ホーム"><span class="cube">▦</span> CUBE<span class="brand-note">SOLVE. REPEAT.</span></a><span class="session"><i></i> セッション</span></header>
     <section class="intro"><span class="eyebrow">YOUR NEXT PERSONAL BEST</span><h1>ひとつずつ、速くなる。</h1><p>集中して、回して、タップ。</p></section>
-    <button id="timer" class="timer" type="button" aria-label="タップして計測開始">
+    <section class="scramble" aria-label="スクランブル">
+      <div class="scramble-head"><span class="scramble-label">SCRAMBLE 3×3×3</span><label class="scramble-switch"><input type="checkbox" id="scramble-toggle" checked> 表示</label></div>
+      <div id="scramble-box" class="scramble-box">
+        <p id="scramble" class="scramble-text">—</p>
+        <button id="scramble-next" type="button">↻ 新しいスクランブル</button>
+      </div>
+    </section>
+    <button id="timer" class="timer" type="button" aria-label="長押しで計測準備">
       <span id="status" class="timer-status"><i></i> READY TO SOLVE</span>
       <span id="time" class="time">0<span>.00</span></span>
-      <span id="hint" class="hint"><span class="tap-icon">◎</span> 画面をタップしてスタート</span>
-      <span class="keyboard">スペースキーでも操作できます</span>
+      <span id="hint" class="hint"><span class="tap-icon">◎</span> 長押しでスタート準備</span>
+      <span class="keyboard">スペースキーでも操作できます（長押しで準備）</span>
     </button>
+    <button id="cancel-inspection" class="cancel-inspection" type="button" hidden>インスペクションをキャンセル</button>
     <div id="announcement" class="sr-only" aria-live="polite"></div>
     <section class="stats" aria-label="統計">
       <div class="stat featured"><span>直近5回の平均 <b>Ao5</b></span><strong id="average">—</strong><small id="average-note">あと5回で表示</small></div>
