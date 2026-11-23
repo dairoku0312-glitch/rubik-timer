@@ -5,13 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#101916">
   <title>CUBE / ルービックキューブタイマー</title>
-  <link rel="stylesheet" href="style.css?v=20261123-2">
-  <script type="module" src="app.js?v=20261123-2"></script>
+  <link rel="stylesheet" href="style.css?v=20261123-3">
+  <script type="module" src="app.js?v=20261123-3"></script>
 </head>
 <body>
   <main>
     <header><a class="brand" href="./" aria-label="CUBE ホーム"><span class="cube">▦</span> CUBE<span class="brand-note">SOLVE. REPEAT.</span></a><span class="session"><i></i> セッション</span></header>
     <section class="intro"><span class="eyebrow">YOUR NEXT PERSONAL BEST</span><h1>ひとつずつ、速くなる。</h1><p>集中して、回して、タップ。</p></section>
+    <div class="mode-switch" role="group" aria-label="練習モード">
+      <button id="mode-solve" type="button" class="mode-btn active" aria-pressed="true">通常ソルブ</button>
+      <button id="mode-cross" type="button" class="mode-btn" aria-pressed="false">クロス練習</button>
+    </div>
     <section class="scramble" aria-label="スクランブル">
       <div class="scramble-head"><span class="scramble-label">SCRAMBLE 3×3×3</span><label class="scramble-switch"><input type="checkbox" id="scramble-toggle" checked> 表示</label></div>
       <div id="scramble-box" class="scramble-box">
