@@ -1,7 +1,10 @@
 import { ao5, formatTime } from './timer.js';
+import { generateScramble } from './scramble.js?v=20261123-1';
+import { InspectionTimer } from './inspection.js?v=20261123-1';
 const $ = id => document.getElementById(id);
 const key = 'cube-timer.records.v1';
-let records = [], running = false, started = 0, frame, storageOK = true;
+let records = [], running = false, started = 0, frame, phaseFrame, storageOK = true;
+const machine = new InspectionTimer();
 try {
   const stored = JSON.parse(localStorage.getItem(key) || '[]');
   if (Array.isArray(stored)) records = stored.filter(r => r && typeof r.id === 'string' && Number.isFinite(r.ms) && r.ms >= 0 && Number.isFinite(r.date));
@@ -88,35 +91,132 @@ function render() {
   }));
 }
 function tick() { display(performance.now() - started); frame = requestAnimationFrame(tick); }
-function toggle() {
-  if (running) {
-    const ms = performance.now() - started;
-    cancelAnimationFrame(frame); running = false;
-    records.unshift({id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, ms, date: Date.now()});
-    const now = new Date();
-    selected = dateKey(now); viewYear = now.getFullYear(); viewMonth = now.getMonth();
-    display(ms); save();
-    $('status').innerHTML = '<i></i> SOLVE COMPLETE';
-    $('hint').textContent = 'タップして次の計測へ';
-    $('announcement').textContent = `${formatTime(ms)}秒。記録しました。`;
-  } else {
-    running = true; started = performance.now(); tick(); render();
-    $('status').innerHTML = '<i></i> SOLVING';
-    $('hint').textContent = 'タップしてストップ';
-    $('announcement').textContent = '計測を開始しました。';
-  }
-  document.body.classList.toggle('running', running);
-  $('timer').setAttribute('aria-label', running ? 'タップして計測停止' : 'タップして計測開始');
+
+// --- Scramble ---
+const scrambleKey = 'cube-timer.scramble.v1';
+let scrambleOn = true;
+try { scrambleOn = localStorage.getItem(scrambleKey) !== 'off'; } catch { /* 読めない場合はON */ }
+function newScramble() { $('scramble').textContent = generateScramble(); }
+function applyScramble() {
+  $('scramble-box').hidden = !scrambleOn;
+  $('scramble-toggle').checked = scrambleOn;
 }
-// Pointer-down stops immediately; suppress the subsequent synthesized click on iOS.
-$('timer').addEventListener('pointerdown', event => { if (!event.isPrimary || event.button !== 0) return; event.preventDefault(); toggle(); });
-$('timer').addEventListener('click', event => { if (event.detail === 0) toggle(); });
+$('scramble-toggle').addEventListener('change', () => {
+  scrambleOn = $('scramble-toggle').checked;
+  try { localStorage.setItem(scrambleKey, scrambleOn ? 'on' : 'off'); } catch { /* 保存不可でも切替は有効 */ }
+  applyScramble();
+});
+$('scramble-next').addEventListener('click', () => { newScramble(); });
+
+// --- 長押し＋インスペクション（状態遷移は inspection.js） ---
+function setPhaseUI() {
+  const s = machine.state;
+  document.body.classList.toggle('holding', s === 'holding');
+  document.body.classList.toggle('inspecting', s === 'inspection');
+  document.body.classList.toggle('running', s === 'running');
+  $('cancel-inspection').hidden = s !== 'inspection';
+  $('timer').setAttribute('aria-label', s === 'running' ? 'タップして計測停止' : '長押しで計測準備');
+}
+function resetIdleUI(status, hint) {
+  running = false; setPhaseUI();
+  $('status').innerHTML = `<i></i> ${status}`;
+  $('hint').textContent = hint;
+}
+function phaseTick() {
+  const now = performance.now();
+  const event = machine.tick(now);
+  if (event === 'inspection-start') {
+    $('status').innerHTML = '<i></i> INSPECTION';
+    $('hint').textContent = '指を離すとスタート（別の指でタップするとキャンセル）';
+    $('announcement').textContent = 'インスペクション開始。15秒以内に指を離すと計測が始まります。';
+    setPhaseUI();
+  }
+  if (machine.state === 'inspection') {
+    $('time').textContent = Math.ceil(machine.inspectionRemainingMs(now) / 1000);
+  }
+  if (event === 'auto-start') { beginSolve(); return; }
+  if (machine.state === 'holding' || machine.state === 'inspection') {
+    phaseFrame = requestAnimationFrame(phaseTick);
+  }
+}
+function ensurePhaseLoop() { cancelAnimationFrame(phaseFrame); phaseFrame = requestAnimationFrame(phaseTick); }
+function beginSolve() {
+  running = true; started = machine.startedAt;
+  cancelAnimationFrame(phaseFrame);
+  tick(); render(); setPhaseUI();
+  $('status').innerHTML = '<i></i> SOLVING';
+  $('hint').textContent = 'タップしてストップ';
+  $('announcement').textContent = '計測を開始しました。';
+}
+function pressStart() {
+  if (machine.state === 'running') {
+    // 開始直後（300ms以内）の誤タップでは止めない
+    if (performance.now() - machine.startedAt < 300) return;
+    stopSolve(); return;
+  }
+  if (machine.press(performance.now()) === 'holding') {
+    $('status').innerHTML = '<i></i> KEEP HOLDING';
+    $('hint').textContent = 'そのまま長押し…';
+    setPhaseUI(); ensurePhaseLoop();
+  }
+}
+function pressEnd() {
+  const event = machine.release(performance.now());
+  if (event === 'solve-start') beginSolve();
+  else if (event === 'hold-cancelled') resetIdleUI('READY TO SOLVE', '長押しでスタート準備');
+}
+function cancelInspection() {
+  if (!machine.cancel()) return;
+  cancelAnimationFrame(phaseFrame);
+  display(0);
+  resetIdleUI('READY TO SOLVE', '長押しでスタート準備');
+  $('announcement').textContent = 'キャンセルしました。';
+}
+function stopSolve() {
+  const ms = performance.now() - started;
+  cancelAnimationFrame(frame); running = false; machine.finish();
+  records.unshift({id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, ms, date: Date.now()});
+  const now = new Date();
+  selected = dateKey(now); viewYear = now.getFullYear(); viewMonth = now.getMonth();
+  display(ms); save();
+  newScramble();
+  resetIdleUI('SOLVE COMPLETE', '長押しで次の計測へ');
+  $('announcement').textContent = `${formatTime(ms)}秒。記録しました。`;
+}
+$('timer').addEventListener('pointerdown', event => {
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
+  if (!event.isPrimary) {
+    // 押し続けている間に別の指で触れたらキャンセル
+    if (machine.state === 'holding' || machine.state === 'inspection') { event.preventDefault(); cancelInspection(); }
+    return;
+  }
+  event.preventDefault();
+  pressStart();
+});
+$('timer').addEventListener('pointerup', event => { if (event.isPrimary) pressEnd(); });
+$('timer').addEventListener('pointercancel', () => { cancelInspection(); });
+$('timer').addEventListener('contextmenu', event => event.preventDefault());
+$('cancel-inspection').addEventListener('click', () => cancelInspection());
 document.addEventListener('keydown', event => {
+  if (event.code === 'Escape') { cancelInspection(); return; }
   if (event.code !== 'Space' || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
   if (event.target.closest('button, a, input, textarea, select') && event.target !== $('timer')) return;
-  event.preventDefault(); toggle();
+  event.preventDefault();
+  if (machine.state === 'running') {
+    if (performance.now() - machine.startedAt >= 300) stopSolve();
+    return;
+  }
+  pressStart();
+});
+document.addEventListener('keyup', event => {
+  if (event.code !== 'Space') return;
+  if (event.target.closest('button, a, input, textarea, select') && event.target !== $('timer')) return;
+  event.preventDefault();
+  pressEnd();
 });
 $('clear').addEventListener('click', () => { if (confirm('すべての記録を削除しますか？ この操作は取り消せません。')) { records = []; save(); display(0); } });
 $('cal-prev').addEventListener('click', () => { viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; } render(); });
 $('cal-next').addEventListener('click', () => { viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; } render(); });
+newScramble();
+applyScramble();
 render();
