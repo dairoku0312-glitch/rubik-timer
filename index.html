@@ -25,9 +25,16 @@
       <div class="stat"><span>計測回数</span><strong id="count">0<em>回</em></strong><small>TOTAL SOLVES</small></div>
     </section>
     <section class="history"><div class="section-heading"><h2>計測の記録 <span id="history-count">0</span></h2><button id="clear" type="button" disabled>すべて削除</button></div>
-      <div class="table-heading"><span>NO. / 日時</span><span>タイム</span><span class="delete-heading">削除</span></div>
+      <div class="calendar" aria-label="記録カレンダー">
+        <div class="cal-header"><button id="cal-prev" type="button" aria-label="前の月">‹</button><div id="cal-title" class="cal-title">—</div><button id="cal-next" type="button" aria-label="次の月">›</button></div>
+        <div class="cal-weekdays" aria-hidden="true"><span>SUN</span><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span></div>
+        <div id="cal-grid" class="cal-grid"></div>
+        <div class="cal-summary"><span class="cal-summary-label">MONTHLY<br>ARCHIVE</span><strong><span id="cal-month-days">0</span> <small>days</small></strong><span class="cal-total">TOTAL<br><b id="cal-total-days">0 days</b></span></div>
+      </div>
+      <div class="day-summary"><h3 id="day-title">—</h3><p id="day-stats">—</p></div>
+      <div class="table-heading"><span>NO. / 時刻</span><span>タイム</span><span class="delete-heading">削除</span></div>
       <ol id="records"></ol>
-      <div id="empty" class="empty"><span>◷</span><h3>最初の記録をつくろう</h3><p>タイマーをタップすると、ここに記録が残ります。</p></div>
+      <div id="empty" class="empty"><span>◷</span><h3 id="empty-title">最初の記録をつくろう</h3><p id="empty-text">タイマーをタップすると、ここに記録が残ります。</p></div>
       <p class="storage-note" id="storage-note">記録はこのブラウザに自動保存されます。</p>
     </section>
     <footer><span>CUBE TIMER</span><p>Ao5 は直近5回の最速・最遅を除いた3回の平均です。</p></footer>
