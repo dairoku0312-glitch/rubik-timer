@@ -1,6 +1,6 @@
 import { ao5, formatTime } from './timer.js';
 import { generateScramble } from './scramble.js?v=20261123-1';
-import { InspectionTimer } from './inspection.js?v=20261123-2';
+import { InspectionTimer } from './inspection.js?v=20261126-1';
 import { keyForMode, loadRecords, saveRecords, loadMode, saveMode } from './recordStore.js?v=20261123-3';
 const $ = id => document.getElementById(id);
 // 通常ソルブは従来キー（移行なし）、クロス練習は別キーで完全分離
@@ -28,6 +28,7 @@ const recordDays = () => new Set(records.map(r => dateKey(new Date(r.date))));
 const dayRecords = () => records.filter(r => dateKey(new Date(r.date)) === selected);
 
 function save() {
+  store[mode] = records;
   storageOK = saveRecords(localStorage, keyForMode(mode), records);
   render();
 }
@@ -183,7 +184,7 @@ function pressStart() {
   if (event === 'solve-start') { beginSolve(); return; }
   if (event === 'holding') {
     $('status').innerHTML = '<i></i> KEEP HOLDING';
-    $('hint').textContent = 'そのまま長押し…';
+    $('hint').textContent = 'そのまま1秒長押し…';
     setPhaseUI(); ensurePhaseLoop();
   }
 }
