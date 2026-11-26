@@ -4,7 +4,7 @@
 // - tick: 時間経過による遷移（長押し成立→インスペクション、15秒経過→自動スタート）
 // - release: インスペクション中に手を離しても何もしない（カウントダウン継続）。
 //   計測中の release も何もしない（自動スタート後に指を離しても止まらない）
-export const HOLD_MS = 500;
+export const HOLD_MS = 1000;
 export const INSPECTION_MS = 15000;
 
 export class InspectionTimer {
@@ -48,7 +48,7 @@ export class InspectionTimer {
   release(now) {
     if (this.state === 'holding') {
       this.state = 'idle';
-      return 'hold-cancelled'; // 0.5秒未満: 何も起こらない
+      return 'hold-cancelled'; // 1秒未満: 何も起こらない
     }
     // inspection 中に手を離しても開始しない（開始は再度タップ or 15秒経過）
     // running 中の release も無視（自動スタート後の指離し対策）
